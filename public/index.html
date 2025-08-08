@@ -32,11 +32,17 @@
     <div class="sidebar">
         <div class="search-box">
             <div class="mb-3">
-                <input type="text" class="form-control" id="searchInput" placeholder="Search notes...">
+                <div class="btn-group" role="group" aria-label="Basic example">
+                  <input type="text" class="form-control" id="searchInput" placeholder="Search notes...">
+                  <button class="btn btn-outline-secondary btn-sm" id="clearFiltersBtn">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+                
             </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm flex-fill" id="showAllBtn">
-                    <i class="fas fa-list me-1"></i> All Notes
+            <div class="d-flex gap-2 d-none">
+                <button class="btn btn-outline-primary btn-sm flex-fill" id="showUntagged">
+                    <i class="fas fa-list me-1"></i> Show Untagged
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" id="clearFiltersBtn">
                     <i class="fas fa-times"></i>
@@ -287,13 +293,18 @@
                 });
                 
                 // Show all notes
-                document.getElementById('showAllBtn').addEventListener('click', () => {
-                    this.clearFilters();
-                });
+                // document.getElementById('showAllBtn').addEventListener('click', () => {
+                //     this.clearFilters();
+                // });
                 
                 // Clear filters
                 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
                     this.clearFilters();
+                });
+
+                // Show all notes
+                document.getElementById('showUntagged').addEventListener('click', () => {
+                    this.showUntagged();
                 });
                 
                 // Edit form save
@@ -354,6 +365,7 @@
             
             async loadData() {
                 await Promise.all([this.loadNotes(), this.loadTags()]);
+                this.displayTags();
                 this.filterAndDisplayNotes();
             }
             
@@ -423,12 +435,24 @@
                     return;
                 }
                 
+                this.tags = this.tags.filter(a=>a.id!=0);
+
+                this.tags.push({
+                    color: "#ACACAC",
+                    created_at: "0000-00-00T00:00:00",
+                    id: 0,
+                    name: "untagged",
+                    note_count: this.notes.filter(note => 
+                            !note.tags || note.tags.length<=0
+                        ).length
+                });
+
                 tagsList.innerHTML = this.tags.map(tag => `
                     <a href="#" class="sidebar-tag ${this.currentFilter === tag.name ? 'active' : ''}" 
                        data-tag="${tag.name}">
                         <span>
                             <span class="tag-badge" style="background-color: ${tag.color}">#</span>
-                            ${tag.name}
+                            ${tag.name.toLowerCase()}
                         </span>
                         <span class="tag-count">${tag.note_count}</span>
                     </a>
@@ -442,6 +466,30 @@
                         this.filterByTag(tagName);
                     });
                 });
+            }
+
+            showUntagged() {
+                this.showLoading(true);
+                let filteredNotes = [...this.notes];
+                
+                // Apply tag filter
+                filteredNotes = filteredNotes.filter(note => 
+                    !note.tags || note.tags.length<=0
+                );
+                
+                // Apply search filter
+                if (this.currentSearch) {
+                    const searchLower = this.currentSearch.toLowerCase();
+                    filteredNotes = filteredNotes.filter(note =>
+                        note.title.toLowerCase().includes(searchLower) ||
+                        note.content.toLowerCase().includes(searchLower)
+                    );
+                }
+                
+                // Sort by creation date (newest first)
+                filteredNotes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
+                this.displayNotes(filteredNotes);
             }
             
             filterByTag(tagName) {
@@ -464,9 +512,15 @@
                 
                 // Apply tag filter
                 if (this.currentFilter) {
-                    filteredNotes = filteredNotes.filter(note => 
-                        note.tags && note.tags.includes(this.currentFilter)
-                    );
+                    if(this.currentFilter.toLowerCase()=="untagged") {
+                        filteredNotes = filteredNotes.filter(note => 
+                            !note.tags || note.tags.length<=0
+                        );
+                    } else {
+                        filteredNotes = filteredNotes.filter(note => 
+                            note.tags && note.tags.includes(this.currentFilter)
+                        );    
+                    }
                 }
                 
                 // Apply search filter

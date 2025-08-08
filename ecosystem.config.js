@@ -7,7 +7,7 @@ module.exports = {
 
     // First application
     {
-      name      : 'bkm-notes',
+      name      : 'myspace-notes',
       script    : 'server.js',
       //watch: true,
       watch_delay: 1000,
